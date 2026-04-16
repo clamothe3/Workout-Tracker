@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; color: #111; }
+  .hidden { display: none !important; }
+  nav { background: #111; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+  nav h1 { color: #fff; font-size: 16px; font-weight: 600; }
+  nav button { background: transparent; border: 1px solid #444; color: #fff; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .container { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #eee; padding: 24px; margin-bottom: 16px; }
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+  h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 10px; font-family: inherit; background: #fafafa; }
+  button.primary { width: 100%; padding: 10px; background: #111; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 4px; }
+  .error { color: #e24b4a; font-size: 13px; margin-bottom: 8px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 16px; text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 600; }
+  .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px; }
+  .workout-item { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+  .workout-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .workout-name { font-weight: 600; font-size: 15px; }
+  .workout-date { font-size: 12px; color: #888; margin-top: 2px; }
+  .exercise-list { margin-top: 10px; border-top: 1px solid #f0f0f0; padding-top: 10px; }
+  .exercise-item { font-size: 13px; color: #555; padding: 3px 0; }
+  .delete-btn { background: none; border: none; color: #e24b4a; cursor: pointer; font-size: 13px; flex-shrink: 0; }
+  .add-exercise { display: flex; gap: 8px; margin-bottom: 8px; }
+  .add-exercise input { margin-bottom: 0; flex: 1; }
+  .add-exercise input.small { flex: 0 0 65px; }
+  .tab-link { font-size: 13px; color: #888; text-align: center; margin-top: 12px; cursor: pointer; }
+  .tab-link span { color: #111; text-decoration: underline; }
+  .muscle-tag { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 500; margin-left: 8px; }
+  .tag-chest { background: #FCEBEB; color: #A32D2D; }
+  .tag-back { background: #E6F1FB; color: #185FA5; }
+  .tag-legs { background: #EAF3DE; color: #3B6D11; }
+  .tag-shoulders { background: #FAEEDA; color: #854F0B; }
+  .tag-arms { background: #EEEDFE; color: #534AB7; }
+  .tag-cardio { background: #E1F5EE; color: #0F6E56; }
+  .tag-other { background: #F1EFE8; color: #5F5E5A; }
+  .pr-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+  .pr-item:last-child { border-bottom: none; }
+  .pr-weight { font-weight: 600; color: #111; }
+  .pr-badge { background: #FAEEDA; color: #854F0B; font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<nav>
+  <h1>💪 Workout Tracker</h1>
+  <button id="logout-btn" class="hidden" onclick="logout()">Log out</button>
+</nav>
+
+<div class="container">
+  <div id="auth-section">
+    <div class="card" id="login-card">
+      <h2>Welcome back</h2>
+      <div id="login-error" class="error hidden"></div>
+      <input type="text" id="login-username" placeholder="Username" />
+      <input type="password" id="login-password" placeholder="Password" />
+      <button class="primary" onclick="login()">Log in</button>
+      <p class="tab-link">No account? <span onclick="showSignup()">Sign up</span></p>
+    </div>
+    <div class="card hidden" id="signup-card">
+      <h2>Create account</h2>
+      <div id="signup-error" class="error hidden"></div>
+      <input type="text" id="signup-username" placeholder="Username" />
+      <input type="password" id="signup-password" placeholder="Password" />
+      <button class="primary" onclick="signup()">Sign up</button>
+      <p class="tab-link">Have an account? <span onclick="showLogin()">Log in</span></p>
+    </div>
+  </div>
+
+  <div id="app-section" class="hidden">
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="stat-workouts">0</div><div class="stat-label">Workouts</div></div>
+      <div class="stat"><div class="stat-num" id="stat-exercises">0</div><div class="stat-label">Exercises logged</div></div>
+      <div class="stat"><div class="stat-num" id="stat-last">—</div><div class="stat-label">Last workout</div></div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Workouts by muscle group</h3>
+        <canvas id="muscleChart" height="180"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Personal records 🏆</h3>
+        <div id="pr-list"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Log workout</h2>
+      <input type="text" id="workout-name" placeholder="Workout name (e.g. Chest Day)" />
+      <div style="display:flex;gap:8px">
+        <input type="date" id="workout-date" style="flex:1" />
+        <select id="workout-muscle" style="flex:1;margin-bottom:10px">
+          <option value="chest">Chest</option>
+          <option value="back">Back</option>
+          <option value="legs">Legs</option>
+          <option value="shoulders">Shoulders</option>
+          <option value="arms">Arms</option>
+          <option value="cardio">Cardio</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <textarea id="workout-notes" placeholder="Notes (optional)" rows="2" style="resize:none"></textarea>
+      <div id="exercises-list"></div>
+      <button onclick="addExerciseRow()" style="width:100%;padding:8px;background:transparent;border:1px dashed #ddd;border-radius:8px;cursor:pointer;font-size:13px;color:#888;margin-bottom:10px;">+ Add exercise</button>
+      <button class="primary" onclick="logWorkout()">Save workout</button>
+    </div>
+
+    <h2 style="margin-bottom:12px">My workouts</h2>
+    <div id="workouts-list"></div>
+  </div>
+</div>
+
+<script>
+  let token = localStorage.getItem("token");
+  let exercises = [];
+  let muscleChart = null;
+
+  const muscleColors = { chest:"#FCEBEB", back:"#E6F1FB", legs:"#EAF3DE", shoulders:"#FAEEDA", arms:"#EEEDFE", cardio:"#E1F5EE", other:"#F1EFE8" };
+  const muscleBorders = { chest:"#E24B4A", back:"#378ADD", legs:"#639922", shoulders:"#EF9F27", arms:"#7F77DD", cardio:"#1D9E75", other:"#888780" };
+
+  if (token) showApp();
+
+  function showApp() {
+    document.getElementById("auth-section").classList.add("hidden");
+    document.getElementById("app-section").classList.remove("hidden");
+    document.getElementById("logout-btn").classList.remove("hidden");
+    document.getElementById("workout-date").value = new Date().toISOString().split("T")[0];
+    loadStats();
+    loadWorkouts();
+  }
+
+  function showSignup() {
+    document.getElementById("login-card").classList.add("hidden");
+    document.getElementById("signup-card").classList.remove("hidden");
+  }
+
+  function showLogin() {
+    document.getElementById("signup-card").classList.add("hidden");
+    document.getElementById("login-card").classList.remove("hidden");
+  }
+
+  function logout() {
+    localStorage.removeItem("token");
+    token = null;
+    document.getElementById("auth-section").classList.remove("hidden");
+    document.getElementById("app-section").classList.add("hidden");
+    document.getElementById("logout-btn").classList.add("hidden");
+  }
+
+  async function login() {
+    const username = document.getElementById("login-username").value;
+    const password = document.getElementById("login-password").value;
+    const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) });
+    const data = await res.json();
+    if (data.error) { document.getElementById("login-error").textContent = data.error; document.getElementById("login-error").classList.remove("hidden"); return; }
+    token = data.token; localStorage.setItem("token", token); showApp();
+  }
+
+  async function signup() {
+    const username = document.getElementById("signup-username").value;
+    const password = document.getElementById("signup-password").value;
+    const res = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) });
+    const data = await res.json();
+    if (data.error) { document.getElementById("signup-error").textContent = data.error; document.getElementById("signup-error").classList.remove("hidden"); return; }
+    token = data.token; localStorage.setItem("token", token); showApp();
+  }
+
+  async function loadStats() {
+    const res = await fetch("/api/stats", { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    document.getElementById("stat-workouts").textContent = data.totalWorkouts;
+    document.getElementById("stat-exercises").textContent = data.totalExercises;
+    document.getElementById("stat-last").textContent = data.recentWorkout ? new Date(data.recentWorkout.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
+
+    // Muscle group chart
+    if (muscleChart) muscleChart.destroy();
+    const labels = data.muscleGroups.map(m => m.muscle_group);
+    const counts = data.muscleGroups.map(m => m.count);
+    const ctx = document.getElementById("muscleChart").getContext("2d");
+    muscleChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{ data: counts, backgroundColor: labels.map(l => muscleColors[l] || "#eee"), borderColor: labels.map(l => muscleBorders[l] || "#ccc"), borderWidth: 2 }]
+      },
+      options: { plugins: { legend: { position: "bottom", labels: { font: { size: 11 }, boxWidth: 12 } } }, cutout: "65%" }
+    });
+
+    // PRs
+    const prList = document.getElementById("pr-list");
+    if (!data.prs.length) { prList.innerHTML = '<p style="font-size:13px;color:#888">Log exercises with weight to see PRs!</p>'; return; }
+    prList.innerHTML = data.prs.map(pr => `
+      <div class="pr-item">
+        <span>${pr.name}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="pr-weight">${pr.max_weight}lbs</span>
+          <span class="pr-badge">PR</span>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  async function loadWorkouts() {
+    const res = await fetch("/api/workouts", { headers: { Authorization: `Bearer ${token}` } });
+    const workouts = await res.json();
+    const list = document.getElementById("workouts-list");
+    if (!workouts.length) { list.innerHTML = '<p style="color:#888;font-size:14px;text-align:center;padding:24px 0">No workouts yet. Log one above!</p>'; return; }
+    list.innerHTML = workouts.map(w => `
+      <div class="workout-item">
+        <div class="workout-header">
+          <div>
+            <div style="display:flex;align-items:center">
+              <span class="workout-name">${w.name}</span>
+              <span class="muscle-tag tag-${w.muscle_group}">${w.muscle_group}</span>
+            </div>
+            <div class="workout-date">${new Date(w.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</div>
+          </div>
+          <button class="delete-btn" onclick="deleteWorkout(${w.id})">Delete</button>
+        </div>
+        ${w.exercises.length ? `<div class="exercise-list">${w.exercises.map(e => `<div class="exercise-item">• ${e.name} — ${e.sets}x${e.reps}${e.weight ? ` @ ${e.weight}lbs` : ""}</div>`).join("")}</div>` : ""}
+        ${w.notes ? `<p style="font-size:13px;color:#888;margin-top:8px">${w.notes}</p>` : ""}
+      </div>
+    `).join("");
+  }
+
+  function addExerciseRow() {
+    const id = Date.now();
+    exercises.push(id);
+    const div = document.createElement("div");
+    div.className = "add-exercise";
+    div.id = `ex-${id}`;
+    div.innerHTML = `
+      <input placeholder="Exercise name" id="ex-name-${id}" />
+      <input type="number" placeholder="Sets" class="small" id="ex-sets-${id}" />
+      <input type="number" placeholder="Reps" class="small" id="ex-reps-${id}" />
+      <input type="number" placeholder="lbs" class="small" id="ex-weight-${id}" />
+      <button onclick="removeExercise(${id})" style="background:none;border:none;color:#e24b4a;cursor:pointer;font-size:18px;padding:0 4px">×</button>
+    `;
+    document.getElementById("exercises-list").appendChild(div);
+  }
+
+  function removeExercise(id) {
+    document.getElementById(`ex-${id}`).remove();
+    exercises = exercises.filter(e => e !== id);
+  }
+
+  async function logWorkout() {
+    const name = document.getElementById("workout-name").value;
+    const date = document.getElementById("workout-date").value;
+    const notes = document.getElementById("workout-notes").value;
+    const muscle_group = document.getElementById("workout-muscle").value;
+    const exList = exercises.map(id => ({
+      name: document.getElementById(`ex-name-${id}`)?.value || "",
+      sets: parseInt(document.getElementById(`ex-sets-${id}`)?.value) || 0,
+      reps: parseInt(document.getElementById(`ex-reps-${id}`)?.value) || 0,
+      weight: parseFloat(document.getElementById(`ex-weight-${id}`)?.value) || 0
+    })).filter(e => e.name);
+    const res = await fetch("/api/workouts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ name, date, notes, muscle_group, exercises: exList }) });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    document.getElementById("workout-name").value = "";
+    document.getElementById("workout-notes").value = "";
+    document.getElementById("exercises-list").innerHTML = "";
+    exercises = [];
+    loadStats();
+    loadWorkouts();
+  }
+
+  async function deleteWorkout(id) {
+    await fetch(`/api/workouts/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    loadStats();
+    loadWorkouts();
+  }
+</script>
+</body>
+</html>
