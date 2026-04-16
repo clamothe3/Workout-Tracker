@@ -1,5 +1,14 @@
 {
+  "functions": {
+    "api/*.js": {
+      "memory": 512
+    }
+  },
   "rewrites": [
+    { "source": "/api/signup", "destination": "/api/signup" },
+    { "source": "/api/login", "destination": "/api/login" },
+    { "source": "/api/workouts", "destination": "/api/workouts" },
+    { "source": "/api/stats", "destination": "/api/stats" },
     { "source": "/(.*)", "destination": "/public/index.html" }
   ]
 }
